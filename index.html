@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Billing - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .package-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .package {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .package:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .package.selected {
+            border-color: #667eea;
+            background-color: #f0f4ff;
+        }
+
+        .package-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .package-price {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .package-duration {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .pay-button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .pay-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .pay-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>WiFi Billing Portal</h1>
+        </div>
+
+        <div class="package-grid" id="packageContainer">
+            <!-- Packages will be loaded here -->
+        </div>
+
+        <div class="form-group">
+            <label for="phone">M-Pesa Phone Number:</label>
+            <input type="tel" id="phone" placeholder="2547XXXXXXXX" maxlength="12">
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing payment...</p>
+        </div>
+
+        <button class="pay-button" id="payButton" disabled>Pay with M-Pesa</button>
+
+        <div class="status-message" id="statusMessage"></div>
+    </div>
+
+    <script>
+        const packages = [
+            { id: 1, name: "1 Hour", price: 5, duration: "1 hour" },
+            { id: 2, name: "4 Hours", price: 10, duration: "4 hours" },
+            { id: 3, name: "12 Hours", price: 20, duration: "12 hours" },
+            { id: 4, name: "24 Hours", price: 30, duration: "24 hours" },
+            { id: 5, name: "7 Days", price: 180, duration: "7 days" }
+        ];
+
+        let selectedPackage = null;
+        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+
+        function renderPackages() {
+            const container = document.getElementById('packageContainer');
+            container.innerHTML = '';
+
+            packages.forEach(pkg => {
+                const packageElement = document.createElement('div');
+                packageElement.className = 'package';
+                packageElement.innerHTML = `
+                    <div class="package-name">${pkg.name}</div>
+                    <div class="package-price">KSh ${pkg.price}</div>
+                    <div class="package-duration">${pkg.duration}</div>
+                `;
+                packageElement.addEventListener('click', () => selectPackage(pkg));
+                container.appendChild(packageElement);
+            });
+        }
+
+        function selectPackage(pkg) {
+            selectedPackage = pkg;
+            
+            // Remove selected class from all packages
+            document.querySelectorAll('.package').forEach(p => {
+                p.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked package
+            event.currentTarget.classList.add('selected');
+            
+            // Enable pay button if phone is valid
+            validateForm();
+        }
+
+        function validateForm() {
+            const phone = document.getElementById('phone').value;
+            const payButton = document.getElementById('payButton');
+            
+            if (selectedPackage && isValidPhone(phone)) {
+                payButton.disabled = false;
+            } else {
+                payButton.disabled = true;
+            }
+        }
+
+        function isValidPhone(phone) {
+            return /^254[17]\d{8}$/.test(phone);
+        }
+
+        async function processPayment() {
+            const phone = document.getElementById('phone').value;
+            const loading = document.getElementById('loading');
+            const statusMessage = document.getElementById('statusMessage');
+            const payButton = document.getElementById('payButton');
+
+            if (!selectedPackage || !isValidPhone(phone)) {
+                showStatus('Please select a package and enter a valid phone number', 'error');
+                return;
+            }
+
+            // Show loading
+            loading.style.display = 'block';
+            payButton.disabled = true;
+
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'initiate_payment',
+                        phone: phone,
+                        package: selectedPackage,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('Payment initiated! Check your phone for M-Pesa prompt.', 'success');
+                    // Poll for payment status
+                    checkPaymentStatus(result.transactionId);
+                } else {
+                    showStatus(result.message || 'Payment failed. Please try again.', 'error');
+                    payButton.disabled = false;
+                }
+            } catch (error) {
+                showStatus('Network error. Please check your connection.', 'error');
+                payButton.disabled = false;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function checkPaymentStatus(transactionId) {
+            let attempts = 0;
+            const maxAttempts = 30; // 2.5 minutes at 5-second intervals
+
+            const checkStatus = async () => {
+                attempts++;
+                
+                try {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'check_status',
+                            transactionId: transactionId
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'completed') {
+                        showStatus('Payment successful! You are now connected.', 'success');
+                        // Redirect to success page or close portal
+                        setTimeout(() => {
+                            window.location.href = 'http://www.google.com';
+                        }, 2000);
+                    } else if (result.status === 'failed' || attempts >= maxAttempts) {
+                        showStatus('Payment failed or timed out. Please try again.', 'error');
+                    } else {
+                        // Continue polling
+                        setTimeout(checkStatus, 5000);
+                    }
+                } catch (error) {
+                    if (attempts < maxAttempts) {
+                        setTimeout(checkStatus, 5000);
+                    } else {
+                        showStatus('Status check failed. Please refresh and try again.', 'error');
+                    }
+                }
+            };
+
+            setTimeout(checkStatus, 5000);
+        }
+
+        function showStatus(message, type) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message status-${type}`;
+            statusMessage.style.display = 'block';
+        }
+
+        // Event listeners
+        document.getElementById('phone').addEventListener('input', validateForm);
+        document.getElementById('payButton').addEventListener('click', processPayment);
+
+        // Initialize
+        renderPackages();
+    </script>
+</body>
+</html>

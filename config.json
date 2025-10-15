@@ -1,0 +1,14 @@
+{
+  "packages": [
+    {"id": 1, "name": "1 Hour", "price": 5, "duration": "1h"},
+    {"id": 2, "name": "4 Hours", "price": 10, "duration": "4h"},
+    {"id": 3, "name": "12 Hours", "price": 20, "duration": "12h"},
+    {"id": 4, "name": "24 Hours", "price": 30, "duration": "24h"},
+    {"id": 5, "name": "7 Days", "price": 180, "duration": "7d"}
+  ],
+  "router": {
+    "hotspotPool": "192.168.88.10-192.168.88.254",
+    "subnet": "192.168.88.0/24",
+    "gateway": "192.168.88.1"
+  }
+}
